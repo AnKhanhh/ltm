@@ -1,5 +1,4 @@
 # Project exclude paths
-/cmake-build-socket/
-/cmake-build-debug/
-/.idea/
-CMakeLists.txt
+*
+!.gitignore
+!/1104
