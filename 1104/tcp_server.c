@@ -2,12 +2,16 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
+#include <netdb.h>
 #include <arpa/inet.h>
-#include <unistd.h>
+#include <errno.h>
+#include <string.h>
+#include <unistd.h> // close()
 
-int main(int argc, char *argv[]) {
+
+int main(int argc, char const *argv[]) {
 	int port;
-	char hello_file[256], rec_file[256];
+	char hello_file_name[256], client_file_name[256];
 	if (argc != 4) {
 		printf("wrong number of args\n");
 		return 1;
@@ -15,54 +19,58 @@ int main(int argc, char *argv[]) {
 
 	char *a;
 	port = (int) strtol(argv[1], &a, 10);
-	strcpy(hello_file, argv[2]);
-	strcpy(rec_file, argv[3]);
+	strcpy(hello_file_name, argv[2]);
+	strcpy(client_file_name, argv[3]);
 
 	int listener = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-	struct sockaddr_in addr;
-	addr.sin_family = AF_INET;
-	addr.sin_addr.s_addr = inet_addr("127.0.0.1");
-	addr.sin_port = htons(port);
+	struct sockaddr_in sck_addr;
+	sck_addr.sin_family = AF_INET;
+	sck_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+	sck_addr.sin_port = htons(port);
 
-	if (bind(listener, (struct sockaddr *) &addr, sizeof(addr))) {
-		perror("bind() unsuccessfully");
+	if (bind(listener, (struct sockaddr *) &sck_addr, sizeof(sck_addr))) {
+		perror("bind() failed");
 		return 1;
 	}
 	if (listen(listener, 5)) {
-		perror("listen() unsuccessfully");
+		perror("listen() failed");
 		return 1;
 	}
 
-	struct sockaddr_in client_addr;
-	int sck_addr_client_len = sizeof(client_addr);
-	int client = accept(listener, (struct sockaddr *) &client_addr, &sck_addr_client_len);
-	if (client == -1) {
-		perror("accept() failed");
+	struct sockaddr_in sck_addr_client;
+	int sck_addr_client_len = sizeof(sck_addr_client);
+	int accept_1 = accept(listener, (struct sockaddr *) &sck_addr_client, &sck_addr_client_len);
+
+	if (accept_1 == -1) {
+		perror("acctept() failed");
 		return 1;
 	}
 
+	FILE *hello_file = fopen(hello_file_name, "rb");
+	FILE *client_file = fopen(client_file_name, "wb");
+	char buf[2048];
 
-	FILE *hello = fopen(hello_file, "rb");
-	FILE *rec = fopen(rec_file, "wb");
-	char buffer[2048];
-	// doc tu file vao buffer
-	while (!feof(hello)) {
-		int end = (int) fread(buffer, 1, sizeof(buffer), hello);
-		buffer[end] = 0;
+	while (!feof(hello_file)) {
+		int fread_1 = fread(buf, 1, sizeof(buf), hello_file);
+		buf[fread_1] = 0;
 	}
-	send(client, buffer, strlen(buffer), 0);
+	send(accept_1, buf, strlen(buf), 0);
 
-	memset(buffer, 0, sizeof(buffer));
+	memset(buf, 0, sizeof(buf));
 	while (1) {
-		int end = recv(client, buffer, sizeof(buffer), 0);
-		buffer[end] = 0;
-		fwrite(buffer, 1, strlen(buffer), rec);
+		int recv_1 = recv(accept_1, buf, sizeof(buf), 0);
+		if (recv_1 == 1) break;
+		buf[recv_1] = 0;
+		fwrite(buf, 1, strlen(buf), client_file);
 	}
 
-	fclose(hello);
-	fclose(rec);
+	fclose(hello_file);
+	fclose(client_file);
 	close(listener);
-	close(client);
-	free(a);
+	close(accept_1);
 	return 0;
 }
+
+//chay server: ./ex2 8081 hello.dat client.dat
+// hello.dat va client.dat dat o cung folder voi ex2
+// chay client: nc localhost 8081
