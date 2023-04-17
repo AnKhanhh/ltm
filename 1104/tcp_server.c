@@ -2,16 +2,13 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
-#include <netdb.h>
 #include <arpa/inet.h>
-#include <errno.h>
-#include <string.h>
-#include <unistd.h> // close()
+#include <unistd.h>
 
 
 int main(int argc, char const *argv[]) {
 	int port;
-	char hello_file_name[256], client_file_name[256];
+	char f_hello[256], f_rec[256];
 	if (argc != 4) {
 		printf("wrong number of args\n");
 		return 1;
@@ -19,8 +16,8 @@ int main(int argc, char const *argv[]) {
 
 	char *a;
 	port = (int) strtol(argv[1], &a, 10);
-	strcpy(hello_file_name, argv[2]);
-	strcpy(client_file_name, argv[3]);
+	strcpy(f_hello, argv[2]);
+	strcpy(f_rec, argv[3]);
 
 	int listener = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	struct sockaddr_in sck_addr;
@@ -39,38 +36,34 @@ int main(int argc, char const *argv[]) {
 
 	struct sockaddr_in sck_addr_client;
 	int sck_addr_client_len = sizeof(sck_addr_client);
-	int accept_1 = accept(listener, (struct sockaddr *) &sck_addr_client, &sck_addr_client_len);
+	int client = accept(listener, (struct sockaddr *) &sck_addr_client, &sck_addr_client_len);
 
-	if (accept_1 == -1) {
-		perror("acctept() failed");
+	if (client == -1) {
+		perror("accept() failed");
 		return 1;
 	}
 
-	FILE *hello_file = fopen(hello_file_name, "rb");
-	FILE *client_file = fopen(client_file_name, "wb");
+	FILE *hello_file = fopen(f_hello, "rb");
+	FILE *client_file = fopen(f_rec, "wb");
 	char buf[2048];
 
 	while (!feof(hello_file)) {
-		int fread_1 = fread(buf, 1, sizeof(buf), hello_file);
-		buf[fread_1] = 0;
+		int end = (int) fread(buf, 1, sizeof(buf), hello_file);
+		buf[end] = 0;
 	}
-	send(accept_1, buf, strlen(buf), 0);
+	send(client, buf, strlen(buf), 0);
 
 	memset(buf, 0, sizeof(buf));
 	while (1) {
-		int recv_1 = recv(accept_1, buf, sizeof(buf), 0);
-		if (recv_1 == 1) break;
-		buf[recv_1] = 0;
+		int end = (int) recv(client, buf, sizeof(buf), 0);
+		if (end == 1) break;
+		buf[end] = 0;
 		fwrite(buf, 1, strlen(buf), client_file);
 	}
 
 	fclose(hello_file);
 	fclose(client_file);
 	close(listener);
-	close(accept_1);
+	close(client);
 	return 0;
 }
-
-//chay server: ./ex2 8081 hello.dat client.dat
-// hello.dat va client.dat dat o cung folder voi ex2
-// chay client: nc localhost 8081
