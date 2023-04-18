@@ -43,23 +43,25 @@ int main(int argc, char const *argv[]) {
 		return 1;
 	}
 
-	FILE *hello_file = fopen(f_hello, "rb");
-	FILE *client_file = fopen(f_rec, "wb");
+	FILE *hello_file;
+	if ((hello_file = fopen(f_hello, "w+")) == NULL) return 1;
+		FILE *client_file = fopen(f_rec, "w+");
 	char buf[2048];
 
 	while (!feof(hello_file)) {
 		int end = (int) fread(buf, 1, sizeof(buf), hello_file);
 		buf[end] = 0;
 	}
-	send(client, buf, strlen(buf), 0);
+	puts(buf);
+//	send(client, buf, strlen(buf), 0);
 
-	memset(buf, 0, sizeof(buf));
-	while (1) {
-		int end = (int) recv(client, buf, sizeof(buf), 0);
-		if (end == 1) break;
-		buf[end] = 0;
-		fwrite(buf, 1, strlen(buf), client_file);
-	}
+//	memset(buf, 0, sizeof(buf));
+//	while (1) {
+//		int end = (int) recv(client, buf, sizeof(buf), 0);
+//		if (end <= 0) break;
+//		buf[end] = 0;
+//		fwrite(buf, 1, strlen(buf), client_file);
+//	}
 
 	fclose(hello_file);
 	fclose(client_file);
