@@ -7,65 +7,79 @@
 
 
 int main(int argc, char const *argv[]) {
-	int port;
+	char *a;
 	char f_hello[256], f_rec[256];
 	if (argc != 4) {
 		printf("wrong number of args\n");
 		return 1;
 	}
 
-	char *a;
-	port = (int) strtol(argv[1], &a, 10);
-	strcpy(f_hello, argv[2]);
 	strcpy(f_rec, argv[3]);
 
-	int listener = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-	struct sockaddr_in sck_addr;
-	sck_addr.sin_family = AF_INET;
-	sck_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
-	sck_addr.sin_port = htons(port);
+//	create socket
+	int server = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+//	setup socket
+	struct sockaddr_in server_addr;
+	server_addr.sin_family = AF_INET;
+	server_addr.sin_addr.s_addr = htonl(INADDR_ANY);    // bind to all interfaces
+	//  inet_addr("127.0.0.1") - bind to localhost only
+	server_addr.sin_port = htons((int) strtol(argv[1], &a, 10));
 
-	if (bind(listener, (struct sockaddr *) &sck_addr, sizeof(sck_addr))) {
+	if (bind(server, (struct sockaddr *) &server_addr, sizeof(server_addr)) == -1) {
 		perror("bind() failed");
 		return 1;
 	}
-	if (listen(listener, 5)) {
+	if (listen(server, 5) == -1) {    // max client allowed 5
 		perror("listen() failed");
 		return 1;
 	}
 
-	struct sockaddr_in sck_addr_client;
-	int sck_addr_client_len = sizeof(sck_addr_client);
-	int client = accept(listener, (struct sockaddr *) &sck_addr_client, &sck_addr_client_len);
-
+//	accept connection from client
+	struct sockaddr_in client_addr;
+	int c_addr_len = sizeof(client_addr);
+	int client = accept(server, (struct sockaddr *) &client_addr, &c_addr_len);
 	if (client == -1) {
 		perror("accept() failed");
 		return 1;
 	}
 
-	FILE *hello_file;
-	if ((hello_file = fopen(f_hello, "w+")) == NULL) return 1;
-		FILE *client_file = fopen(f_rec, "w+");
-	char buf[2048];
-
-	while (!feof(hello_file)) {
-		int end = (int) fread(buf, 1, sizeof(buf), hello_file);
-		buf[end] = 0;
+//	send hello from file to client
+	char greetings[256];
+	long length;
+	FILE *hello_file = fopen(argv[2], "r+");
+	if (hello_file == NULL) {
+		perror("fopen() failed");
+		return 1;
 	}
-	puts(buf);
-//	send(client, buf, strlen(buf), 0);
-
-//	memset(buf, 0, sizeof(buf));
-//	while (1) {
-//		int end = (int) recv(client, buf, sizeof(buf), 0);
-//		if (end <= 0) break;
-//		buf[end] = 0;
-//		fwrite(buf, 1, strlen(buf), client_file);
-//	}
-
+	fseek(hello_file, 0,SEEK_END);
+	length = ftell(hello_file);
+	fseek(hello_file, 0 , SEEK_SET);
+	fread(greetings, 1, length, hello_file);
+	greetings[length] = 0;
+	if(send(client, greetings, strlen(greetings),0) == -1){
+		perror("send() failed");
+		return 1;
+	}
 	fclose(hello_file);
+
+	char record[1024];
+	FILE *client_file = fopen(argv[3], "a");
+	while (1) {
+		long received =  recv(client, record, sizeof(record), 0);
+		if (received < 0){
+			perror("recv() failed");
+			return 1;
+		} else if(received == 0){
+			break;
+		}
+		fwrite(record, 1, received, client_file);
+	}
 	fclose(client_file);
-	close(listener);
+
+	close(server);
 	close(client);
 	return 0;
 }
+
+
+
