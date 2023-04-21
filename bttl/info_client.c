@@ -9,7 +9,7 @@
 
 void fgets_wrapper(char *s, int s_size);
 
-
+// <ip addr> <port>
 int main(int argc, char *argv[]) {
 	if (argc != 3) {
 		printf("wrong args number");
@@ -58,6 +58,11 @@ int main(int argc, char *argv[]) {
 		packaged += snprintf(package + packaged, STR_LENGTH, "|%s|%hi", disk_name[i], disk_size[i]);
 	}
 
+//	send to server
+	if ((send(client, package, strlen(package) + 1, 0)) == -1){
+		perror("send() failed");
+		return 1;
+	}
 
 	return 0;
 }
