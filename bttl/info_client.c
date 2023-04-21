@@ -5,28 +5,48 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 
-void fgets_wrapper(char*, int);
+void fgets_wrapper(char *, int);
 
-int main(int argc, char *argv[]){
-	char buffer[256];
-	char* x;
+int main(int argc, char *argv[]) {
+	if (argc != 3) {
+		printf("wrong args number");
+		return 1;
+	}
+
+//	setup socket address
+	struct sockaddr_in server_addr = {};    // effectively equivalent to memset 0
+	server_addr.sin_family = AF_INET;
+	server_addr.sin_addr.s_addr = inet_addr(argv[1]);
+	server_addr.sin_port = htons(strtol(argv[2], NULL, 10));
+
+//	create and connect socket
+	int client = socket(AF_INET, SOCK_STREAM, 0);
+	if(client == -1){
+		perror("socket() failed");
+		return 1;
+	}
+	if (connect(client, (struct sockaddr *) &server_addr, sizeof server_addr) == -1 ){
+		perror("connect() failed");
+		return 1;
+	}
 
 	printf("ten may");
 	char comp[256];
 	fgets_wrapper(comp, sizeof comp);
 	printf("so o dia");
 	fgets_wrapper(comp, sizeof comp);
-	long num = strtol(comp, &x, 10);
+	long num = strtol(comp, NULL, 10);
 	for (int i = 0; i < num; ++i) {
 		printf("iter");
 	}
-	
-    return 0;
+
+	return 0;
 }
 
-void fgets_wrapper(char* s, int s_size){
-	if((fgets(s, s_size, stdin) != NULL)) {
+void fgets_wrapper(char *s, int s_size) {
+	if ((fgets(s, s_size, stdin) != NULL)) {
 		s[strcspn(s, "\r\n")] = 0;
 		return;
 	}
+	puts("error while parsing input");
 }
