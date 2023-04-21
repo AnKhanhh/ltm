@@ -5,7 +5,10 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 
-void fgets_wrapper(char *, int);
+#define STR_LENGTH 1024
+
+void fgets_wrapper(char *s, int s_size);
+
 
 int main(int argc, char *argv[]) {
 	if (argc != 3) {
@@ -21,24 +24,40 @@ int main(int argc, char *argv[]) {
 
 //	create and connect socket
 	int client = socket(AF_INET, SOCK_STREAM, 0);
-	if(client == -1){
+	if (client == -1) {
 		perror("socket() failed");
 		return 1;
 	}
-	if (connect(client, (struct sockaddr *) &server_addr, sizeof server_addr) == -1 ){
+	if (connect(client, (struct sockaddr *) &server_addr, sizeof server_addr) == -1) {
 		perror("connect() failed");
 		return 1;
 	}
 
-	printf("ten may");
-	char comp[256];
-	fgets_wrapper(comp, sizeof comp);
-	printf("so o dia");
-	fgets_wrapper(comp, sizeof comp);
-	long num = strtol(comp, NULL, 10);
-	for (int i = 0; i < num; ++i) {
-		printf("iter");
+	char buffer[STR_LENGTH];
+//	taking in relevant information
+	printf("input device name: ");
+	char device[STR_LENGTH];
+	fgets_wrapper(device, sizeof device);
+	printf("input number of disks: ");
+	fgets_wrapper(buffer, sizeof device);
+	long number = strtol(buffer, NULL, 10);
+	char disk_name[number][STR_LENGTH];
+	short disk_size[number];
+	for (int i = 0; i < number; ++i) {
+		printf("input name of disk %d: ", i + 1);
+		fgets_wrapper(disk_name[i], sizeof disk_name[i]);
+		printf("input size of disk %d: ", i + 1);
+		fgets_wrapper(buffer, sizeof buffer);
+		disk_size[i] = strtol(buffer, NULL, 10);
 	}
+
+//	packaging and sending information
+	char package[STR_LENGTH];
+	int packaged = snprintf(package, STR_LENGTH, "%s|%ld", device, number);        // package size excluding null
+	for (int i = 0; i < number && packaged < STR_LENGTH; i++) {
+		packaged += snprintf(package + packaged, STR_LENGTH, "|%s|%hi", disk_name[i], disk_size[i]);
+	}
+
 
 	return 0;
 }
