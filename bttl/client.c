@@ -37,14 +37,13 @@ int main(int argc, char *argv[]) {
 	int parsed;
 	FILE *file = fopen(argv[3], "r+");
 	do {
-		parsed = fread(buffer, 1, BUF_LEN-1, file);
+		parsed = fread(buffer, 1, BUF_LEN - 1, file);
 		buffer[parsed] = 0;
-		//	if(send(client,buffer, sizeof buffer,0) == -1){
-		//		perror("send() failed");
-		//		return 1;
-		//	}
-		puts(buffer);
-	} while (parsed == BUF_LEN-1);
+		if (send(client, buffer, sizeof(buffer) -1, 0) == -1) {
+			perror("send() failed");
+			return 1;
+		}
+	} while (strlen(buffer) == BUF_LEN - 1);
 
 	return 0;
 }
