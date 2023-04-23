@@ -3,7 +3,6 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
-#include <unistd.h>
 
 #define STR_LENGTH 1024
 
@@ -48,7 +47,7 @@ int main(int argc, char *argv[]) {
 		fgets_wrapper(disk_name[i], sizeof disk_name[i]);
 		printf("input size of disk %d: ", i + 1);
 		fgets_wrapper(buffer, sizeof buffer);
-		disk_size[i] = strtol(buffer, NULL, 10);
+		disk_size[i] = (short) strtol(buffer, NULL, 10);
 	}
 
 //	packaging and sending information
@@ -59,7 +58,7 @@ int main(int argc, char *argv[]) {
 	}
 
 //	send to server
-	if ((send(client, package, strlen(package) + 1, 0)) == -1){
+	if ((send(client, package, strlen(package) + 1, 0)) == -1) {
 		perror("send() failed");
 		return 1;
 	}
