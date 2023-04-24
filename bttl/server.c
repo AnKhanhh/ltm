@@ -9,7 +9,7 @@
 
 #define BUF_LEN 1024
 
-void fgets_wrapper(char *s, int s_size);
+int count_substring(char *s, char *sub);
 
 // <ip addr> <port>
 int main(int argc, char *argv[]) {
@@ -57,8 +57,18 @@ int main(int argc, char *argv[]) {
 			return 1;
 		}
 	} while (received != 0);
-	puts(buffer);
 
+	printf("occurrence count: %d\n", count_substring(buffer, "0123456789"));
 
 	return 0;
+}
+
+int count_substring(char *s, char *sub) {
+	int count = 0;
+	char *tmp = s;
+	while ((tmp = strstr(tmp, sub))) {
+		tmp++;
+		count++;
+	}
+	return count;
 }
