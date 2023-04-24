@@ -7,14 +7,10 @@
 
 
 int main(int argc, char const *argv[]) {
-	char *a;
-	char f_hello[256], f_rec[256];
 	if (argc != 4) {
 		printf("wrong number of args\n");
 		return 1;
 	}
-
-	strcpy(f_rec, argv[3]);
 
 //	create socket
 	int server = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
@@ -23,7 +19,7 @@ int main(int argc, char const *argv[]) {
 	server_addr.sin_family = AF_INET;
 	server_addr.sin_addr.s_addr = htonl(INADDR_ANY);    // bind to all interfaces
 	//  inet_addr("127.0.0.1") - bind to localhost only
-	server_addr.sin_port = htons((int) strtol(argv[1], &a, 10));
+	server_addr.sin_port = htons((int) strtol(argv[1], NULL, 10));
 
 	if (bind(server, (struct sockaddr *) &server_addr, sizeof(server_addr)) == -1) {
 		perror("bind() failed");
