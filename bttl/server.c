@@ -46,8 +46,7 @@ int main(int argc, char *argv[]) {
 	}
 
 //	receive all data before handling
-	char buffer[BUF_LEN];
-	memset(buffer, 0, BUF_LEN);
+	char buffer[BUF_LEN] = "";
 	long received, offset = 0;
 	do {
 		received = recv(client, buffer + offset, sizeof buffer, 0);
