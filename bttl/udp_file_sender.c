@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -32,12 +31,26 @@ int main(int argc, char *argv[]) {
 //	extract and send file name
 	char file_name[BUF_LEN];
 	strcpy(file_name, strrchr(argv[3], '\\') + 1);
-
 	if(sendto(client, file_name, strlen(file_name), 0, (struct sockaddr *) &server_addr , sizeof server_addr) !=
-			strlen(file_name)){
+	   strlen(file_name)){
 		perror("sendto() failed");
 		return 1;
 	}
+
+//	sending file content
+	FILE *file = fopen(argv[3],"r+");
+	char buffer[BUF_LEN];
+	while(fgets(buffer, BUF_LEN, file) != NULL){
+		if(sendto(client, buffer, strlen(buffer), 0, (struct sockaddr *) &server_addr , sizeof server_addr) !=
+		   strlen(buffer)){
+			perror("sendto() failed");
+			return 1;
+		}
+		memset(buffer, 0, strlen(buffer));
+	}
+
+	fclose(file);
+	close(client);
 
 	return 0;
 }
