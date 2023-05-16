@@ -11,6 +11,8 @@
 #define MAX_CLIENT 10
 #define MSG_LEN 1024
 
+void execute_client_cmd(int sock_fd, char *cmd, char *pipe);
+
 typedef struct client {
 	int sock_fd;
 	struct sockaddr_in addr;
@@ -19,8 +21,8 @@ typedef struct client {
 } client_t;
 
 int main(int argc, char *argv[]) {
-	if ( argc != 3 ) {
-		printf("Usage: %s <port> <path_to_dtb>\n", argv[0]);
+	if ( argc != 4 ) {
+		printf("Usage: %s <port> <path_to_dtb> <path_to_out>\n", argv[0]);
 		exit(EXIT_FAILURE);
 	}
 //	initialize server socket and broadcast port
@@ -91,7 +93,7 @@ int main(int argc, char *argv[]) {
 				strcpy(clients[client_count++].pswd, "");
 				printf("Client from %s:%d connected\n",
 					   inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
-				char *question = "Enter your user name:";
+				char *question = "Enter your user name: ";
 				if ( send(client, question, strlen(question), 0) < 0 ) {
 					perror("send() failed");
 					continue;
@@ -123,55 +125,73 @@ int main(int argc, char *argv[]) {
 					sscanf(msg, "%[^ \t\n]", clients[i].user_name);
 					printf("Client from %s:%d is now named %s\n", inet_ntoa(clients[i].addr.sin_addr),
 						   ntohs(clients[i].addr.sin_port), clients[i].user_name);
-					char *query = "Enter your password:";
+					char *query = "Enter your password: ";
 					if ( send(clients[i].sock_fd, query, strlen(query), 0) < 0 ) {
 						perror("send() failed");
 						continue;
 					}
 //				client not registered, match names and passwords
-//				TODO: this part have bugs
 				} else if ( strcmp(clients[i].pswd, "") == 0 ) {
 					msg[msg_len] = 0;
 					sscanf(msg, "%[^ \t\n]", clients[i].pswd);
-					char *line = NULL, *temp;
+					char line[20];
+					char *temp = NULL;
 					size_t size, match_found = 0;
-					while ( getline(&line, &size, dtb) != -1 ) {
+					while ( fgets(line, 20, dtb) != NULL) {
 						temp = strtok(line, " ");
 						if ( strcmp(clients[i].user_name, temp) == 0 ) {
-							temp = strtok(NULL, "\n");
+							temp = strtok(NULL, "\r\n");
 							if ( strcmp(clients[i].pswd, temp) == 0 ) {
 								match_found++;
-								char *query = "User name and password matched, client registered!";
+								char *query = "Client registered! You can now issue commands!\n";
 								if ( send(clients[i].sock_fd, query, strlen(query), 0) < 0 ) {
 									perror("send() failed");
 								}
-								free(line);
 								break;
 							}
 						}
-						free(line);
-						perror(NULL);
 					}
-					if ( match_found ) continue;
-					strcpy(clients[i].user_name, "");
-					strcpy(clients[i].pswd, "");
-					char *query = "No match found, try again!";
-					if ( send(clients[i].sock_fd, query, strlen(query), 0) < 0 ) {
-						perror("send() failed");
-						continue;
+					if ( !match_found ) {
+						strcpy(clients[i].user_name, "");
+						strcpy(clients[i].pswd, "");
+						char *query = "No match found. Enter your user name again: ";
+						if ( send(clients[i].sock_fd, query, strlen(query), 0) < 0 ) {
+							perror("send() failed");
+							continue;
+						}
 					}
-//				client registered
+//				client registered, execute command
 				} else {
-					msg[msg_len] = 0;
-					puts(msg);
+					msg[msg_len - 1] = 0;
+					execute_client_cmd(clients[i].sock_fd, msg, argv[3]);
 				}
 			}
 		}
 		if ( client_count == 0 ) break;
 	}
 
-close(server);
-puts("Server closed!");
+	fclose(dtb);
+	close(server);
+	puts("Server and DTB closed. Session ended!");
 
-return 0;
+	return 0;
+}
+// TODO: this function is buggy
+void execute_client_cmd(int sock_fd, char *cmd, char *pipe) {
+	char p_cmd[128];
+	snprintf(p_cmd, sizeof(p_cmd), "%s > %s", cmd, pipe);
+	puts(p_cmd);
+	int status = system(p_cmd);
+	if ( status != -1 ) {
+		char msg[128] = "";
+		FILE *f_out = fopen(pipe, "r");
+		while ( fgets(msg, (int) sizeof(msg), f_out) != NULL) {
+			puts(msg);
+			if ( send(sock_fd, msg, strlen(msg), 0) < 0 ) perror("send() failed");
+		}
+		fclose(f_out);
+	} else {
+		char *msg = "Wrong command bro!\n";
+		if ( send(sock_fd, msg, strlen(msg), 0) < 0 ) perror("send failed");
+	}
 }
