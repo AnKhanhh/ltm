@@ -164,7 +164,7 @@ int main(int argc, char *argv[]) {
 					msg[msg_len - 1] = 0;
 					char cmd[256];
 					snprintf(cmd, sizeof cmd, "%s > %s", msg, argv[3]);
-					printf("issuing command: %s.", cmd);
+					printf("issuing command: %s\n", cmd);
 					if ( system(cmd) != 1 ) {
 						char out_msg[MSG_LEN];
 						FILE *f_out = fopen(argv[3], "r");
@@ -184,7 +184,7 @@ int main(int argc, char *argv[]) {
 
 	fclose(dtb);
 	close(server);
-	puts("Server and DTB closed. Session ended!");
+	puts("No client left. Session ended!");
 
 	return 0;
 }
