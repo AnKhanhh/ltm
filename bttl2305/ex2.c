@@ -31,9 +31,25 @@ int main(int argc, char *argv[]) {
 	}
 
 //	setup fie descriptors
-	fd_set fds,fd_temp;
+	fd_set fds, fd_temp;
 	FD_ZERO(&fds);
 	FD_SET(server_socket, &fds);
+	FD_SET(STDIN_FILENO, &fds);
+
+	while ( 1 ) {
+		FD_COPY(&fds,&fd_temp);
+		if ( select(FD_SETSIZE, &fd_temp, NULL,NULL,NULL) <0 ){
+			perror("select()");
+			break;
+		}
+
+		if ( FD_ISSET(STDIN_FILENO, &fd_temp) ){
+			char s[STR_LEN];
+			fgets(s, sizeof s, stdin);
+		}
+
+		if ( 0 ) break;
+	}
 
 	return 0;
 }

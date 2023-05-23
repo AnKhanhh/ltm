@@ -12,7 +12,6 @@
 typedef struct client {
 	int sock_fd;
 	struct sockaddr_in addr;
-	char id[20];
 } client_t;
 
 // <port>
@@ -56,7 +55,7 @@ int main(int argc, char *argv[]) {
 			continue;
 		}
 
-
+//		connect to client if not over limit
 		if ( FD_ISSET(server, &fd_temp)) {
 			struct sockaddr_in client_addr;
 			socklen_t client_addr_len = sizeof(client_addr);
@@ -74,18 +73,43 @@ int main(int argc, char *argv[]) {
 				printf("Client from %s:%d connected\n",
 					   inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
 				char question[STR_LEN];
-				snprintf(question,sizeof question,"Hi!, %d connected right now.", client_count);
+				snprintf(question, sizeof question, "Hi!, %d connected right now.", client_count);
 				if ( send(client, question, strlen(question), 0) < 0 ) {
 					perror("send() failed");
 					continue;
 				}
-
 			} else {
-//				accept and immediately close connection
+//				close connection
 				close(client);
 				printf("Maximum number of clients reached.\nClient %d disconnected\n", client);
 			}
 		}
+
+		for ( int i = 0; i < client_count; i++ ) {
+			if ( FD_ISSET(clients[i].sock_fd, &fd_temp)) {
+				char msg[STR_LEN];
+				long msg_len = recv(clients[i].sock_fd, msg, STR_LEN, 0);
+
+//				socket closed, remove client
+				if ( msg_len <= 0 ) {
+					FD_CLR(clients[i].sock_fd, &fds);
+					printf("Client from %s:%d disconnected\n",
+						   inet_ntoa(clients[i].addr.sin_addr), ntohs(clients[i].addr.sin_port));
+					clients[i] = clients[--client_count];
+					continue;
+				} else {
+					char message[msg_len];
+					strcpy(msg,message);
+					for ( int j = 0; j < client_count; j++ ) {
+						if ( j == i ) continue;
+						if ( send(clients[j].sock_fd, message, strlen(message), 0) < 0 ) {
+							perror("send() failed");
+						}
+					}
+				}
+			}
+		}
+		if ( client_count == 0 ) break;
 	}
 	return 0;
 }
