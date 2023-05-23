@@ -1,10 +1,1 @@
-C:UsersadminDesktophustcanltmbtvn2out.txt
-CMakeCache.txt
-CMakeFiles
-Testing
-build.ninja
-chat_server.exe
-chat_server.exe.stackdump
-cmake_install.cmake
-telnet_server.exe
-telnet_server.exe.stackdump
+/cygdrive/c/Users/admin/Desktop/hustcan/ltm/cmake-build-debug

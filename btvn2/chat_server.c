@@ -12,6 +12,7 @@
 #define MAX_CLIENT 10
 #define MAX_MSG_LEN 1024
 
+// TODO: separate registration for each client
 typedef struct client {
 	int sock_fd;
 	struct sockaddr_in addr;
