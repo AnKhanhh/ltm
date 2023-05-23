@@ -11,7 +11,6 @@
 #define MAX_CLIENT 10
 #define MSG_LEN 1024
 
-void execute_client_cmd(int sock_fd, char *cmd, char *pipe);
 
 typedef struct client {
 	int sock_fd;
@@ -136,7 +135,7 @@ int main(int argc, char *argv[]) {
 					sscanf(msg, "%[^ \t\n]", clients[i].pswd);
 					char line[20];
 					char *temp = NULL;
-					size_t size, match_found = 0;
+					size_t match_found = 0;
 					while ( fgets(line, 20, dtb) != NULL) {
 						temp = strtok(line, " ");
 						if ( strcmp(clients[i].user_name, temp) == 0 ) {
@@ -163,7 +162,20 @@ int main(int argc, char *argv[]) {
 //				client registered, execute command
 				} else {
 					msg[msg_len - 1] = 0;
-					execute_client_cmd(clients[i].sock_fd, msg, argv[3]);
+					char cmd[256];
+					snprintf(cmd, sizeof cmd, "%s > %s", msg, argv[3]);
+					printf("issuing command: %s.", cmd);
+					if ( system(cmd) != 1 ) {
+						char out_msg[MSG_LEN];
+						FILE *f_out = fopen(argv[3], "r");
+						while ( fgets(out_msg, (int) sizeof(out_msg), f_out) != NULL) {
+							if ( send(clients[i].sock_fd, out_msg, strlen(out_msg), 0) < 0 ) perror("send() failed");
+						}
+						fclose(f_out);
+					} else{
+						char out_msg[MSG_LEN] = "wrong command";
+						if ( send(clients[i].sock_fd, out_msg, strlen(out_msg), 0) < 0 ) perror("send() failed");
+					}
 				}
 			}
 		}
@@ -175,23 +187,4 @@ int main(int argc, char *argv[]) {
 	puts("Server and DTB closed. Session ended!");
 
 	return 0;
-}
-// TODO: this function is buggy
-void execute_client_cmd(int sock_fd, char *cmd, char *pipe) {
-	char p_cmd[128];
-	snprintf(p_cmd, sizeof(p_cmd), "%s > %s", cmd, pipe);
-	puts(p_cmd);
-	int status = system(p_cmd);
-	if ( status != -1 ) {
-		char msg[128] = "";
-		FILE *f_out = fopen(pipe, "r");
-		while ( fgets(msg, (int) sizeof(msg), f_out) != NULL) {
-			puts(msg);
-			if ( send(sock_fd, msg, strlen(msg), 0) < 0 ) perror("send() failed");
-		}
-		fclose(f_out);
-	} else {
-		char *msg = "Wrong command bro!\n";
-		if ( send(sock_fd, msg, strlen(msg), 0) < 0 ) perror("send failed");
-	}
 }
