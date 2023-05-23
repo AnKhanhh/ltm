@@ -100,12 +100,9 @@ int main(int argc, char *argv[]) {
 				} else {
 					char message[msg_len];
 					strcpy(msg,message);
-					for ( int j = 0; j < client_count; j++ ) {
-						if ( j == i ) continue;
-						if ( send(clients[j].sock_fd, message, strlen(message), 0) < 0 ) {
+						if ( send(clients[i].sock_fd, message, strlen(message), 0) < 0 ) {
 							perror("send() failed");
 						}
-					}
 				}
 			}
 		}
