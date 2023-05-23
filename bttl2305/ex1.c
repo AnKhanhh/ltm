@@ -99,10 +99,10 @@ int main(int argc, char *argv[]) {
 					continue;
 				} else {
 					char message[msg_len];
-					strcpy(msg,message);
-						if ( send(clients[i].sock_fd, message, strlen(message), 0) < 0 ) {
-							perror("send() failed");
-						}
+					strcpy(msg, message);
+					if ( send(clients[i].sock_fd, message, strlen(message), 0) < 0 ) {
+						perror("send() failed");
+					}
 				}
 			}
 		}
