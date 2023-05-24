@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -8,6 +9,8 @@
 
 #define MAX_CLIENT 16
 #define STR_LEN 256
+
+char *trim(char *s);
 
 typedef struct client {
 	int sock_fd;
@@ -20,9 +23,9 @@ int main(int argc, char *argv[]) {
 		puts("Wrong arg count!");
 		exit(EXIT_FAILURE);
 	}
-//	initialize server socket and address, bind and listen
-	int server = socket(AF_INET, SOCK_STREAM, 0);
-	if ( server < 0 ) {
+//	initialize server_fd socket and address, bind and listen
+	int server_fd = socket(AF_INET, SOCK_STREAM, 0);
+	if ( server_fd < 0 ) {
 		perror("socket() failed");
 		exit(EXIT_FAILURE);
 	}
@@ -30,11 +33,11 @@ int main(int argc, char *argv[]) {
 	server_addr.sin_family = AF_INET;
 	server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
 	server_addr.sin_port = htons(strtol(argv[1], NULL, 10));
-	if ( bind(server, (struct sockaddr *) &server_addr, sizeof(server_addr)) < 0 ) {
+	if ( bind(server_fd, (struct sockaddr *) &server_addr, sizeof(server_addr)) < 0 ) {
 		perror("bind() failed");
 		exit(EXIT_FAILURE);
 	}
-	if ( listen(server, MAX_CLIENT) < 0 ) {
+	if ( listen(server_fd, MAX_CLIENT) < 0 ) {
 		perror("listen() failed");
 		exit(EXIT_FAILURE);
 	}
@@ -45,7 +48,7 @@ int main(int argc, char *argv[]) {
 //	initialize file descriptor set
 	fd_set fds, fd_temp;
 	FD_ZERO(&fds);
-	FD_SET(server, &fds);
+	FD_SET(server_fd, &fds);
 
 	puts("waiting for client ...");
 	while ( 1 ) {
@@ -56,32 +59,32 @@ int main(int argc, char *argv[]) {
 		}
 
 //		connect to client if not over limit
-		if ( FD_ISSET(server, &fd_temp)) {
+		if ( FD_ISSET(server_fd, &fd_temp)) {
 			struct sockaddr_in client_addr;
 			socklen_t client_addr_len = sizeof(client_addr);
-			int client = accept(server, (struct sockaddr *) &client_addr, &client_addr_len);
-			if ( client < 0 ) {
+			int client_fd = accept(server_fd, (struct sockaddr *) &client_addr, &client_addr_len);
+			if ( client_fd < 0 ) {
 				perror("accept() failed");
 				continue;
 			}
 			if ( client_count < MAX_CLIENT ) {
-				FD_SET(client, &fds);
-				clients[client_count].sock_fd = client;
+				FD_SET(client_fd, &fds);
+				clients[client_count].sock_fd = client_fd;
 				clients[client_count].addr = client_addr;
 				client_count++;
 
 				printf("Client from %s:%d connected\n",
 					   inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
-				char question[STR_LEN];
-				snprintf(question, sizeof question, "Hi!, %d connected right now.", client_count);
-				if ( send(client, question, strlen(question), 0) < 0 ) {
+				char query[STR_LEN];
+				snprintf(query, sizeof query, "Hi!, %d clients connecting right now.\n", client_count);
+				if ( send(client_fd, query, strlen(query), 0) < 0 ) {
 					perror("send() failed");
 					continue;
 				}
 			} else {
 //				close connection
-				close(client);
-				printf("Maximum number of clients reached.\nClient %d disconnected\n", client);
+				close(client_fd);
+				printf("Maximum number of clients reached.\nClient %d disconnected\n", client_fd);
 			}
 		}
 
@@ -89,24 +92,49 @@ int main(int argc, char *argv[]) {
 			if ( FD_ISSET(clients[i].sock_fd, &fd_temp)) {
 				char msg[STR_LEN];
 				long msg_len = recv(clients[i].sock_fd, msg, STR_LEN, 0);
-
 //				socket closed, remove client
 				if ( msg_len <= 0 ) {
 					FD_CLR(clients[i].sock_fd, &fds);
+					close(clients[i].sock_fd);
 					printf("Client from %s:%d disconnected\n",
 						   inet_ntoa(clients[i].addr.sin_addr), ntohs(clients[i].addr.sin_port));
 					clients[i] = clients[--client_count];
 					continue;
+//				client send msg, trim
 				} else {
-					char message[msg_len];
-					strcpy(msg, message);
-					if ( send(clients[i].sock_fd, message, strlen(message), 0) < 0 ) {
+					msg[msg_len] = 0;
+					char *query = trim(msg);
+					if ( send(clients[i].sock_fd, query, strlen(query), 0) < 0 ) {
 						perror("send() failed");
 					}
+					free(query);
 				}
 			}
 		}
-		if ( client_count == 0 ) break;
+		if ( client_count == 0 ) {
+			puts("All client disconnected, session ends.");
+			break;
+		}
 	}
+
+	close(server_fd);
 	return 0;
+}
+
+char *trim(char *s) {
+	long ss_len = (long) strlen(s);
+	char *ss = s;
+	while ( isspace (ss[0])) {
+		ss++;
+		ss_len--;
+	}
+	while ( isspace(ss[ss_len - 1])) {
+		ss_len--;
+	}
+	ss[ss_len] = 0;
+	char *s_result = malloc(sizeof(char) * ss_len + 5);
+	s_result[0] = '\"';
+	strcpy(s_result + 1, ss);
+	strcpy(s_result + strlen(s_result), "\"\n");
+	return s_result;
 }
