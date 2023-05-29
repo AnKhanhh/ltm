@@ -93,7 +93,7 @@ int main(int argc, char *argv[]) {
 				char msg[STR_LEN];
 				long msg_len = recv(clients[i].sock_fd, msg, STR_LEN, 0);
 //				socket closed, remove client
-				if ( msg_len <= 0 ) {
+				if ( msg_len <= 0 || strcmp(msg,"exit") == 0) {
 					FD_CLR(clients[i].sock_fd, &fds);
 					close(clients[i].sock_fd);
 					printf("Client from %s:%d disconnected\n",
@@ -128,10 +128,6 @@ char *standardize(char *s) {
 		ss++;
 		ss_len--;
 	}
-	while ( isspace(ss[ss_len - 1])) {
-		ss_len--;
-	}
-	ss[ss_len] = 0;
 
 	char *s_result = malloc(sizeof(char) * ss_len + 5);
 	long i = 0;
@@ -145,6 +141,11 @@ char *standardize(char *s) {
 		tk = strtok(NULL, " \t");
 	}
 
-	strcpy(s_result + strlen(s_result) - 1, "\"\n");
+	long sr_len = (long) strlen(s_result);
+	while ( isspace(s_result[sr_len-1])){
+		sr_len--;
+	}
+
+	strcpy(&s_result[sr_len], "\"\n");
 	return s_result;
 }
