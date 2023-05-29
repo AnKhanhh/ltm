@@ -68,7 +68,9 @@ int main(int argc, char *argv[]) {
 			if ( msg_len < 0 ) {
 				perror("recvfrom()");
 				exit(EXIT_FAILURE);
-			} else if ( strcmp(msg, "exit\n") == 0 ) {
+			}
+			msg[msg_len] = 0;
+			if ( strcmp(msg, "exit\n") == 0 ) {
 				puts("socket closing ...");
 				break;
 			} else { printf("received:%s", msg); }
