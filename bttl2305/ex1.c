@@ -10,7 +10,7 @@
 #define MAX_CLIENT 16
 #define STR_LEN 256
 
-char *trim(char *s);
+char *standardize(char *s);
 
 typedef struct client {
 	int sock_fd;
@@ -23,7 +23,7 @@ int main(int argc, char *argv[]) {
 		puts("Wrong arg count!");
 		exit(EXIT_FAILURE);
 	}
-//	initialize server_fd socket and address, bind and listen
+//	initialize server socket/fd and address, bind and listen
 	int server_fd = socket(AF_INET, SOCK_STREAM, 0);
 	if ( server_fd < 0 ) {
 		perror("socket() failed");
@@ -100,10 +100,10 @@ int main(int argc, char *argv[]) {
 						   inet_ntoa(clients[i].addr.sin_addr), ntohs(clients[i].addr.sin_port));
 					clients[i] = clients[--client_count];
 					continue;
-//				client send msg, trim
+//				client send msg, standardize
 				} else {
 					msg[msg_len] = 0;
-					char *query = trim(msg);
+					char *query = standardize(msg);
 					if ( send(clients[i].sock_fd, query, strlen(query), 0) < 0 ) {
 						perror("send() failed");
 					}
@@ -121,10 +121,10 @@ int main(int argc, char *argv[]) {
 	return 0;
 }
 
-char *trim(char *s) {
+char *standardize(char *s) {
 	long ss_len = (long) strlen(s);
 	char *ss = s;
-	while ( isspace (ss[0])) {
+	while ( isspace(*ss)) {
 		ss++;
 		ss_len--;
 	}
@@ -132,9 +132,19 @@ char *trim(char *s) {
 		ss_len--;
 	}
 	ss[ss_len] = 0;
+
 	char *s_result = malloc(sizeof(char) * ss_len + 5);
-	s_result[0] = '\"';
-	strcpy(s_result + 1, ss);
-	strcpy(s_result + strlen(s_result), "\"\n");
+	long i = 0;
+	s_result[i++] = '\"';
+	char *tk = strtok(ss, " \t");
+	while ( tk != NULL) {
+		tk[0] = toupper(tk[0]);
+		strcpy(&s_result[i], tk);
+		i += strlen(tk);
+		s_result[i++] = ' ';
+		tk = strtok(NULL, " \t");
+	}
+
+	strcpy(s_result + strlen(s_result) - 1, "\"\n");
 	return s_result;
 }
