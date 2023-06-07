@@ -1,56 +1,52 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <netdb.h>
+#include <stdio.h>
 #include <unistd.h>
+#include <errno.h>
+#include <string.h>
+#include <stdlib.h>
 
-#define BUF_LEN 128
+int main()
+{
+	int sock,bytes_recv,sin_size;
+	struct sockaddr_in server_addr;
+	struct hostent *host;
+	char send_data[1024],recv_data[1024];
 
-// <addr> <port> <file>
-int main(int argc, char *argv[]) {
-	if (argc != 4) {
-		printf("wrong args count");
-		return 1;
+	host= (struct hostent *) gethostbyname((char *)"127.0.0.1");
+
+
+	if ((sock = socket(AF_INET, SOCK_DGRAM, 0)) == -1)
+	{
+		perror("socket");
+		exit(1);
 	}
 
-//	setup socket address
-	struct sockaddr_in server_addr = {};    // effectively equivalent to memset 0
 	server_addr.sin_family = AF_INET;
-	server_addr.sin_addr.s_addr = inet_addr(argv[1]);
-	server_addr.sin_port = htons(strtol(argv[2], NULL, 10));
+	server_addr.sin_port = htons(5000);
+	server_addr.sin_addr = *((struct in_addr *)host->h_addr);
+	bzero(&(server_addr.sin_zero),8);
+	sin_size = sizeof(struct sockaddr);
 
-//	create udp socket
-	int client = socket(AF_INET, SOCK_DGRAM, 0);
-	if (client == -1) {
-		perror("socket() failed");
-		return 1;
+	while (1)
+	{
+
+		printf("Type Something (q or Q to quit):");
+		gets(send_data);
+
+		if ((strcmp(send_data , "q") == 0) || strcmp(send_data , "Q") == 0)
+			break;
+
+		else
+			sendto(sock, send_data, strlen(send_data), 0,
+				   (struct sockaddr *)&server_addr, sizeof(struct sockaddr));
+
+		bytes_recv = recvfrom(sock,recv_data,1024,0,(struct sockaddr *)&server_addr,&sin_size);
+		recv_data[bytes_recv]= '\0';
+		printf("Received :%s\n",recv_data);
 	}
 
-//	extract and send file name
-	char file_name[BUF_LEN];
-	strcpy(file_name, strrchr(argv[3], '\\') + 1);
-	if(sendto(client, file_name, strlen(file_name), 0, (struct sockaddr *) &server_addr , sizeof server_addr) !=
-	   strlen(file_name)){
-		perror("sendto() failed");
-		return 1;
-	}
-
-//	sending file content
-	FILE *file = fopen(argv[3],"r+");
-	char buffer[BUF_LEN];
-	while(fgets(buffer, BUF_LEN, file) != NULL){
-		if(sendto(client, buffer, strlen(buffer), 0, (struct sockaddr *) &server_addr , sizeof server_addr) !=
-		   strlen(buffer)){
-			perror("sendto() failed");
-			return 1;
-		}
-		memset(buffer, 0, strlen(buffer));
-	}
-
-	fclose(file);
-	close(client);
-
-	return 0;
 }
