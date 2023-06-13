@@ -68,7 +68,7 @@ void *client_proc(void *param) {
 			perror("accept() failed");
 			exit(EXIT_FAILURE);
 		}
-		printf("New client from %s:%d accepted in thread %ld with pid %d\n",
+		printf("New client from %s:%d accepted in thread %ld with id %d\n",
 			   inet_ntoa(client_addr.sin_addr),
 			   ntohs(client_addr.sin_port), (long) pthread_self(), getpid());
 
@@ -84,10 +84,9 @@ void *client_proc(void *param) {
 			continue;
 		} else {
 			buf[strcspn(buf, "\n")] = 0;
-			printf("Received %d bytes from client %d: %s\n", len, client, buf);
-
-			char *msg = "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n<html><body><h1>Hello "
-						"World</h1></body></html> \n";
+			printf("Received %ld bytes from client %d: %s\n", len, client, buf);
+			char msg[BUF_SIZE];
+			fgets(msg, sizeof msg, stdin);
 			if ( send(client, msg, strlen(msg), 0) < 0 ) {
 				perror("send() failed");
 				exit(EXIT_FAILURE);

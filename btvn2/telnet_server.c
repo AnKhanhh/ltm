@@ -16,7 +16,7 @@ typedef struct client {
 	int sock_fd;
 	struct sockaddr_in addr;
 	char user_name[16];
-	char pswd[16];
+	char psw[16];
 } client_t;
 
 int main(int argc, char *argv[]) {
@@ -89,7 +89,7 @@ int main(int argc, char *argv[]) {
 				clients[client_count].sock_fd = client;
 				clients[client_count].addr = client_addr;
 				strcpy(clients[client_count].user_name, "");
-				strcpy(clients[client_count++].pswd, "");
+				strcpy(clients[client_count++].psw, "");
 				printf("Client from %s:%d connected\n",
 					   inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
 				char *question = "Enter your user name: ";
@@ -130,9 +130,9 @@ int main(int argc, char *argv[]) {
 						continue;
 					}
 //				client not registered, match names and passwords
-				} else if ( strcmp(clients[i].pswd, "") == 0 ) {
+				} else if ( strcmp(clients[i].psw, "") == 0 ) {
 					msg[msg_len] = 0;
-					sscanf(msg, "%[^ \t\n]", clients[i].pswd);
+					sscanf(msg, "%[^ \t\n]", clients[i].psw);
 					char line[20];
 					char *temp = NULL;
 					size_t match_found = 0;
@@ -140,7 +140,7 @@ int main(int argc, char *argv[]) {
 						temp = strtok(line, " ");
 						if ( strcmp(clients[i].user_name, temp) == 0 ) {
 							temp = strtok(NULL, "\r\n");
-							if ( strcmp(clients[i].pswd, temp) == 0 ) {
+							if ( strcmp(clients[i].psw, temp) == 0 ) {
 								match_found++;
 								char *query = "Client registered! You can now issue commands!\n";
 								if ( send(clients[i].sock_fd, query, strlen(query), 0) < 0 ) {
@@ -152,7 +152,7 @@ int main(int argc, char *argv[]) {
 					}
 					if ( !match_found ) {
 						strcpy(clients[i].user_name, "");
-						strcpy(clients[i].pswd, "");
+						strcpy(clients[i].psw, "");
 						char *query = "No match found. Enter your user name again: ";
 						if ( send(clients[i].sock_fd, query, strlen(query), 0) < 0 ) {
 							perror("send() failed");
