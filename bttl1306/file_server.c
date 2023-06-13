@@ -40,7 +40,7 @@ int main(int argc, char *argv[]) {
 	struct dirent *entry;
 
 	int file_count = 0;
-	char *file_list = malloc(1);
+	char *file_list = malloc(5);
 	while (( entry = readdir(dir)) != NULL) {
 		if ( entry->d_type == 8 ) {
 			file_list = realloc(file_list, strlen(file_list) + strlen(entry->d_name) + 3);
@@ -49,6 +49,7 @@ int main(int argc, char *argv[]) {
 			entities_count++;
 		}
 	}
+	strcat(file_list,"\r\n\r\n");
 
 	struct sockaddr_in client_addr;
 	socklen_t client_addr_len = sizeof(client_addr);
@@ -59,11 +60,25 @@ int main(int argc, char *argv[]) {
 	}
 
 	if ( fork() == 0 ) {
-		exit(EXIT_SUCCESS);
+		if ( file_count == 0 ) {
+			if ( send(client_fd, "ERR no file", STR_LEN, 0) < 0 ) {
+				perror("send");
+			}
+		} else {
+			char msg[STR_LEN];
+			snprintf(msg, STR_LEN, "OK %d\r\n", file_count);
+			if ( send(client_fd, msg, strlen(msg), 0) < 0 ) {
+				perror("send");
+			}
+			if ( send(client_fd, file_list, strlen(file_list), 0) < 0 ) {
+				perror("send");
+			}
+		}
+
 	} else {
 		char query[STR_LEN];
 		while ( 1 ) {
-			int query_len =  recv(client_fd, query, STR_LEN, 0);
+			int query_len = recv(client_fd, query, STR_LEN, 0);
 			if ( query_len <= 0 ) {
 				perror("recv");
 				close(client_fd);
@@ -73,5 +88,6 @@ int main(int argc, char *argv[]) {
 
 	closedir(dir);
 	close(server_fd);
+	free(file_list);
 	return 0;
 }
