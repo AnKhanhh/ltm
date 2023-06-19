@@ -4,8 +4,6 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <string.h>
-#include <sys/select.h>
-#include <sys/ioctl.h>
 #include <errno.h>
 #include <dirent.h>
 
@@ -36,30 +34,32 @@ int main(int argc, char *argv[]) {
 		exit(EXIT_FAILURE);
 	}
 
-	DIR *dir = opendir(PATH_TO_DIR);
-	struct dirent *entry;
 
-	int file_count = 0;
-	char *file_list = malloc(5);
-	while (( entry = readdir(dir)) != NULL) {
-		if ( entry->d_type == 8 ) {
-			file_list = realloc(file_list, strlen(file_list) + strlen(entry->d_name) + 3);
-			strcat(file_list, entry->d_name);
-			strcat(file_list, "\r\n");
-			entities_count++;
-		}
-	}
-	strcat(file_list,"\r\n\r\n");
 
-	struct sockaddr_in client_addr;
-	socklen_t client_addr_len = sizeof(client_addr);
-	int client_fd = accept(server_fd, (struct sockaddr *) &client_addr, &client_addr_len);
+//	struct sockaddr_in client_addr;
+//	socklen_t client_addr_len = sizeof(client_addr);
+//	pass pointers if info on client is needed
+	int client_fd = accept(server_fd, NULL, NULL);
 	if ( client_fd < 0 ) {
 		perror("accept");
 		exit(EXIT_FAILURE);
 	}
 
 	if ( fork() == 0 ) {
+		DIR *dir = opendir(PATH_TO_DIR);
+		struct dirent *entry;
+		//	count number of files
+		int file_count = 0;
+		char *file_list = malloc(5);
+		while (( entry = readdir(dir)) != NULL) {
+			if ( entry->d_type == DT_REG ) {
+				file_list = realloc(file_list, strlen(file_list) + strlen(entry->d_name) + 3);
+				strcat(file_list, entry->d_name);
+				strcat(file_list, "\r\n");
+				file_count++;
+			}
+		}
+		strcat(file_list,"\r\n\r\n");
 		if ( file_count == 0 ) {
 			if ( send(client_fd, "ERR no file", STR_LEN, 0) < 0 ) {
 				perror("send");
@@ -75,19 +75,25 @@ int main(int argc, char *argv[]) {
 			}
 		}
 
+		close(server_fd);
+		close(client_fd);
+		free(file_list);
+		exit(EXIT_SUCCESS);
+
+
 	} else {
 		char query[STR_LEN];
 		while ( 1 ) {
-			int query_len = recv(client_fd, query, STR_LEN, 0);
+			ssize_t query_len = recv(client_fd, query, STR_LEN, 0);
 			if ( query_len <= 0 ) {
 				perror("recv");
 				close(client_fd);
+				break;
 			}
 		}
+	close(server_fd);
+	close(client_fd);
 	}
 
-	closedir(dir);
-	close(server_fd);
-	free(file_list);
 	return 0;
 }
